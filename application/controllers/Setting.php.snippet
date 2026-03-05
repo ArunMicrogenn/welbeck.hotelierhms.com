@@ -1,0 +1,47 @@
+    public function UpdateUserRights()
+    {
+        try {
+            $groupRightsId = $this->input->post('groupRightsId');
+            $type = $this->input->post('type');
+            $value = $this->input->post('value');
+            
+            // Validate inputs
+            if (!$groupRightsId || !$type) {
+                echo json_encode(['success' => false, 'message' => 'Invalid input parameters']);
+                return;
+            }
+            
+            // Map type to database column
+            $column = '';
+            switch($type) {
+                case 'Add':
+                    $column = 'FAdd';
+                    break;
+                case 'Edit':
+                    $column = 'FEdit';
+                    break;
+                case 'View':
+                    $column = 'Fview';
+                    break;
+                case 'Delete':
+                    $column = 'Fdelete';
+                    break;
+                default:
+                    echo json_encode(['success' => false, 'message' => 'Invalid right type']);
+                    return;
+            }
+            
+            // Update the rights in database
+            $query = "UPDATE User_GroupRights SET $column = ? WHERE GroupRights_Id = ?";
+            $result = $this->db->query($query, array($value, $groupRightsId));
+            
+            if ($this->db->affected_rows() > 0) {
+                echo json_encode(['success' => true]);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'No changes made']);
+            }
+            
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }

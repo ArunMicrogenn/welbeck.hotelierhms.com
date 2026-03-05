@@ -1,0 +1,127 @@
+
+
+
+span.notificationtime {
+    display: block;
+}
+
+
+.noti-information .notification-list {
+    padding: 0;
+}
+
+.notification-list a:first-child {
+    border-top: none;
+}
+
+.noti-information .notification-list a {
+    padding: 10px 18px 10px 18px;
+}
+.notification-list a {
+    display: inline-block;
+    width: 100%;
+    padding: 20px 0;
+    border-top: 1px solid #f3f3f3;
+    color: #2b2b2c;
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.notification-list.not-list a span.icon {
+    margin-top: 5px;
+}
+
+.notification-list.mail-list a span.icon {
+    padding: 3px 10px;
+    margin-top: 0px;
+    color: white;
+}
+
+.notification-list a span.icon {
+    margin-right: 15px;
+    font-size: 16px;
+    float: left;
+}
+
+.notification-list.mail-list.not-list {
+    height:300px;
+    overflow:hidden;
+}
+
+.notificationn-list.mail-list.not-list {
+    height: 170px;
+    overflow:hidden;
+}
+
+.notification-list p,
+.notification-list p small {
+    margin: 0;
+    padding: 0;
+}
+.notification-icon {
+    width: 36px;
+    height: 36px;
+    text-align: center;
+    display: inline-block;
+    vertical-align: middle;
+    font-size: 15px;
+    color: #fff;
+    line-height: 1.2;
+    padding: 9px 0;
+    margin-right: 5px;
+}
+
+.notification-label {
+    float: right;
+    border-radius: 10px;
+    padding: 0px 10px;
+    color: #fff;
+}
+
+
+.page-header.navbar .top-menu .navbar-nav>li.dropdown-notification .dropdown-menu .dropdown-menu-list>li a .details {
+    overflow: hidden
+}
+.page-header.navbar .top-menu .navbar-nav>li.dropdown-notification .dropdown-menu .dropdown-menu-list>li a .details .label-icon {
+    margin-right: 10px;
+    -webkit-border-radius: 50%;
+    -moz-border-radius: 50%;
+    -ms-border-radius: 50%;
+    -o-border-radius: 50%;
+    border-radius: 50%
+}
+.page-header.navbar .top-menu .navbar-nav>li.dropdown-notification .dropdown-menu .dropdown-menu-list>li a .details .label-icon i {
+    margin-right: 2px;
+    margin-left: 1px
+}
+.page-header.navbar .top-menu .navbar-nav>li.dropdown-notification .dropdown-menu .dropdown-menu-list>li a .details .label-icon .badge {
+    right: 15px
+}
+.page-header.navbar .top-menu .navbar-nav>li.dropdown-notification .dropdown-menu .dropdown-menu-list>li a .time {
+    float: right;
+    max-width: 75px;
+    font-size: 11px;
+    font-weight: 400;
+    opacity: .7;
+    filter: alpha(opacity=70);
+    text-align: right;
+    padding: 1px 5px;
+    margin: 7px 0px;
+}
+
+.page-header.navbar .top-menu .navbar-nav>li.dropdown-notification.dropdown-dark .dropdown-menu .dropdown-menu-list>li>a .time {
+    background: #354353;
+}
+.page-header.navbar .top-menu .navbar-nav>li.dropdown-notification.dropdown-dark .dropdown-menu .dropdown-menu-list>li>a:hover .time {
+    background: #2b3643;
+}
+
+.page-header.navbar .top-menu .navbar-nav>li.dropdown-notification .dropdown-menu .dropdown-menu-list>li>a .time {
+    background: #f1f1f1;
+}
+.page-header.navbar .top-menu .navbar-nav>li.dropdown-notification .dropdown-menu .dropdown-menu-list>li>a:hover .time {
+    background: #e4e4e4;
+}
+
+
+

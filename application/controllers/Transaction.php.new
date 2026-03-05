@@ -1,0 +1,183 @@
+<?php
+defined('BASEPATH') OR exit('No direct script access allowed');
+
+class Transaction extends CI_Controller {
+
+    public function tempBillSplitform()
+    {
+        $response = array('status' => 'error', 'message' => '');
+        
+        try {
+            $this->db->trans_begin();
+            
+            // Validate required parameters
+            if (!isset($_REQUEST['checkindate']) || !isset($_REQUEST['outdate']) || !isset($_REQUEST['Roomid'])) {
+                throw new Exception('Required parameters missing');
+            }
+
+            $begin = new DateTime($_REQUEST['checkindate']);
+            $end   = new DateTime($_REQUEST['outdate']);
+
+            // Get room status and IDs
+            $sql = "SELECT rs.roomgrcid, rs.grcid, rs.status, rm.RoomNo 
+                    FROM room_status rs
+                    INNER JOIN Mas_Room rm ON rm.Room_Id = rs.roomid 
+                    WHERE rs.roomid = ? 
+                    AND rs.status IN ('Ready for Settlement', 'Occupied')";
+            
+            $res = $this->db->query($sql, array($_REQUEST['Roomid']));
+            if (!$res || $res->num_rows() == 0) {
+                throw new Exception('Invalid room status or room not found');
+            }
+
+            $row = $res->row_array();
+            $roomgrcid = $row['roomgrcid'];
+            $grcid = $row['grcid'];
+            $roomNo = $row['RoomNo'];
+
+            // Reset previous split bills
+            $this->db->query("UPDATE Trans_Credit_Entry SET groupno = '', splitbillno = '' WHERE roomgrcid = ?", array($roomgrcid));
+            $this->db->query("UPDATE Temp_Trans_Credit_Entry SET groupno = '', splitbillno = '' WHERE roomgrcid = ?", array($roomgrcid));
+
+            // Get new bill numbers
+            $result = $this->db->query("SELECT dbo.SPL_Credit_Entry_No() AS splitbilno, dbo.SPL_Temp_Credit_Entry_No() AS tempSplitbilno");
+            if (!$result || $result->num_rows() == 0) {
+                throw new Exception('Failed to generate split bill numbers');
+            }
+
+            $billNumbers = $result->row_array();
+            $splitbilno = $billNumbers['splitbilno'];
+            $RentSplitbilno = $billNumbers['tempSplitbilno'];
+
+            // Process each day's entries
+            for ($i = $begin; $i <= $end; $i->modify('+1 day')) {
+                $dates = $i->format("Y-m-d");
+                
+                // Get credit entries
+                $creditSql = "SELECT 
+                    ce.CreditNo,
+                    ce.Credid,
+                    ce.CreditDate,
+                    ce.grcid,
+                    ce.Ord,
+                    ISNULL(ce.amount, 0) as amount,
+                    ce.type
+                FROM (
+                    SELECT 
+                        CreditNo, Credid, CreditDate, grcid, Revenue_Id AS Ord,
+                        amount, 'PERM' as type
+                    FROM Trans_credit_entry 
+                    WHERE roomgrcid = ? AND CreditDate = ?
+                    UNION ALL
+                    SELECT 
+                        CreditNo, Credid, CreditDate, grcid, Revenue_Id AS Ord,
+                        amount, 'TEMP' as type
+                    FROM Temp_Trans_credit_entry 
+                    WHERE roomgrcid = ? AND CreditDate = ?
+                ) ce
+                WHERE ISNULL(ce.amount, 0) > 0
+                ORDER BY ce.Ord, ce.CreditDate, ce.Credid";
+
+                $creditRes = $this->db->query($creditSql, array($roomgrcid, $dates, $roomgrcid, $dates));
+                
+                if ($creditRes && $creditRes->num_rows() > 0) {
+                    foreach ($creditRes->result_array() as $entry) {
+                        $groupNo = isset($_REQUEST[$entry['CreditNo']]) ? $_REQUEST[$entry['CreditNo']] : '';
+                        
+                        if ($entry['type'] == 'TEMP') {
+                            $this->db->query(
+                                "UPDATE Temp_Trans_credit_entry 
+                                SET groupno = ?, splitbillno = ?, mainroomgrcid = ?, billstatus = 'Ready for Settlement'
+                                WHERE CreditDate = ? AND roomgrcid = ? AND Credid = ? AND amount > 0",
+                                array($groupNo, $RentSplitbilno, $roomgrcid, $dates, $roomgrcid, $entry['Credid'])
+                            );
+                        } else {
+                            $this->db->query(
+                                "UPDATE Trans_Credit_Entry 
+                                SET groupno = ?, splitbillno = ?, mainroomgrcid = ?, billstatus = 'Ready for Settlement'
+                                WHERE CreditDate = ? AND roomgrcid = ? AND Credid = ? AND amount > 0",
+                                array($groupNo, $splitbilno, $roomgrcid, $dates, $roomgrcid, $entry['Credid'])
+                            );
+                            $splitbilno = $this->nextSplitBillNumber($splitbilno);
+                        }
+                    }
+                }
+            }
+
+            // Update receipts
+            $this->db->query(
+                "UPDATE Trans_receipt_mas 
+                SET splitbillno = ?, modifieddate = GETDATE(), modifiedby = ?
+                WHERE grcid = ? AND amount > 0",
+                array($splitbilno, User_id, $grcid)
+            );
+
+            // Create checkout entry
+            $checkoutNo = 'CHK' . date('Ymd') . sprintf('%04d', rand(1, 9999));
+            $this->db->query(
+                "INSERT INTO Trans_Checkout_mas (
+                    Checkoutno, roomid, roomgrcid, grcid, 
+                    checkoutdate, checkouttime, 
+                    totalamount, status, createdby, createdon
+                ) 
+                SELECT 
+                    ?, ?, ?, ?,
+                    GETDATE(), GETDATE(),
+                    SUM(amount), 'Ready for Settlement', ?, GETDATE()
+                FROM (
+                    SELECT amount FROM Trans_Credit_Entry 
+                    WHERE roomgrcid = ? AND splitbillno = ? AND amount > 0
+                    UNION ALL
+                    SELECT amount FROM Temp_Trans_credit_entry 
+                    WHERE roomgrcid = ? AND splitbillno = ? AND amount > 0
+                ) amounts",
+                array(
+                    $checkoutNo, $_REQUEST['Roomid'], $roomgrcid, $grcid,
+                    User_id, $roomgrcid, $splitbilno, $roomgrcid, $RentSplitbilno
+                )
+            );
+
+            // Update room status
+            $this->db->query(
+                "UPDATE room_status 
+                SET status = 'Ready for Settlement',
+                    lastmodified = GETDATE(),
+                    modifiedby = ?
+                WHERE roomid = ?",
+                array(User_id, $_REQUEST['Roomid'])
+            );
+
+            // Mark room details as split
+            $this->db->query(
+                "UPDATE Trans_Roomdet_det 
+                SET splitbill = 1 
+                WHERE grcid = ?",
+                array($grcid)
+            );
+
+            if ($this->db->trans_status() === FALSE) {
+                throw new Exception("Transaction failed");
+            }
+
+            $this->db->trans_commit();
+            
+            $response['status'] = 'success';
+            $response['message'] = 'Bill split successfully';
+            $response['billId'] = $splitbilno;
+            $response['checkoutNo'] = $checkoutNo;
+            $response['roomNo'] = $roomNo;
+            
+        } catch (Exception $e) {
+            $this->db->trans_rollback();
+            $response['message'] = $e->getMessage();
+        }
+        
+        echo json_encode($response);
+        return;
+    }
+
+    public function nextSplitBillNumber($cur_Splitbilno)
+    {
+        $splitbilno = (int)substr($cur_Splitbilno, 3) + 1;
+        return 'SPL' . str_pad($splitbilno, 5, '0', STR_PAD_LEFT);
+    }

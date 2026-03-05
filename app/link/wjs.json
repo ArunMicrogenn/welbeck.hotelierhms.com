@@ -1,0 +1,20 @@
+{
+	"js":["assets/bower_components/jquery/dist/jquery.min.js",
+		   "assets/bower_components/bootstrap/dist/js/bootstrap.min.js",
+		   "assets/bower_components/jquery-slimscroll/jquery.slimscroll.min.js",
+		   "assets/bower_components/fastclick/lib/fastclick.js",
+		   "assets/bower_components/jquery-ui/jquery-ui.min.js",
+		   "assets/jquery.ajaxfileupload.js",
+		   "assets/dist/js/adminlte.min.js",
+		   "assets/dist/js/demo.js",		 
+		   "assets/bower_components/datatables.net/js/jquery.dataTables.min.js",
+		   "assets/bower_components/datatables.net-bs/js/dataTables.bootstrap.min.js",
+		   "assets/bower_components/bootstrap-datepicker/dist/js/bootstrap-datepicker.min.js",
+		   "assets/plugins/iCheck/icheck.min.js",
+		   "assets/js/myjs.js",
+		   "assets/js/sweetalert.min.js",
+		   "assets/jQueryUI/autocomplete.js",
+		   "assets/plugins/jquery-slimscroll/jquery.slimscroll.min.js",
+		   "assets/js/app.js"
+		  ]
+  }

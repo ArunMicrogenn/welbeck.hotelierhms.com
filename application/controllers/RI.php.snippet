@@ -1,0 +1,90 @@
+    public function valRatePlan()
+    {
+        try {
+            // Validate inputs
+            if(empty($_POST['RoomType_Id']) || empty($_POST['PlanType_Id'])) {
+                echo json_encode(['success' => false, 'message' => 'Please select Room Type and Rate Type']);
+                return;
+            }
+            if(empty($_POST['FromDate']) || empty($_POST['ToDate'])) {
+                echo json_encode(['success' => false, 'message' => 'Please select From Date and To Date']);
+                return;
+            }
+            echo json_encode(['success' => true]);
+        } catch(Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    public function GetRatePlan()
+    {
+        try {
+            // Get POST data
+            $keey = $this->input->post('Keey');
+            $roomTypeId = $this->input->post('RoomType_Id');
+            $planTypeId = $this->input->post('PlanType_Id');
+            $fromDate = date('Y-m-d', strtotime($this->input->post('FromDate')));
+            $toDate = date('Y-m-d', strtotime($this->input->post('ToDate')));
+            $single = floatval($this->input->post('Single'));
+            $double = floatval($this->input->post('Double'));
+            $triple = floatval($this->input->post('Triple'));
+            $quadruple = floatval($this->input->post('Quadruple'));
+            $adultRate = floatval($this->input->post('AdultRate'));
+            $childRate = floatval($this->input->post('ChildRate'));
+            $foodPlanId = intval($this->input->post('FoodPlan_Id'));
+            $adultPlanAmt = floatval($this->input->post('AdultPlanAmt'));
+            $childPlanAmt = floatval($this->input->post('ChildPlanAmt'));
+
+            // Execute stored procedure for insertion
+            $sql = "EXEC Exec_RatePlan_Det ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?";
+            $params = array(
+                $keey,
+                $roomTypeId,
+                $planTypeId,
+                $fromDate,
+                $toDate,
+                $single,
+                $double,
+                $triple,
+                $quadruple,
+                $adultRate,
+                $childRate,
+                $foodPlanId,
+                $adultPlanAmt,
+                $childPlanAmt
+            );
+            
+            $this->db->query($sql, $params);
+
+            // Get updated list
+            $qry = "EXEC Update_RatePlan_Det ?";
+            $res = $this->db->query($qry, array($keey));
+            
+            $html = '';
+            foreach($res->result() as $row) {
+                $html .= '<tr>';
+                $html .= '<td>'.$row->FD.'</td>';
+                $html .= '<td>'.$row->TD.'</td>';
+                $html .= '<td align="right">'.$row->Single.'</td>';
+                $html .= '<td align="right">'.$row->Doubles.'</td>';
+                $html .= '<td align="right">'.$row->Triple.'</td>';
+                $html .= '<td align="right">'.$row->Quadruple.'</td>';
+                $html .= '<td align="right">'.$row->AdultRate.'</td>';
+                $html .= '<td align="right">'.$row->ChildRate.'</td>';
+                $html .= '<td>'.$row->ShortName.'</td>';
+                $html .= '<td align="right">'.$row->AdultPlanAmt.'</td>';
+                $html .= '<td align="right">'.$row->ChildPlanAmt.'</td>';
+                $html .= '<td><a class="btn btn-danger btn-sm" onclick="Delete_('.$row->RatePlanDet_Id.')">';
+                $html .= '<i class="fa fa-trash" aria-hidden="true"></i> Delete</a></td>';
+                $html .= '</tr>';
+            }
+
+            echo json_encode(['success' => true, 'html' => $html]);
+
+        } catch(Exception $e) {
+            echo json_encode([
+                'success' => false, 
+                'message' => 'Error: ' . $e->getMessage()
+            ]);
+        }
+    }

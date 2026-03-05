@@ -1,0 +1,7 @@
+{
+  "css":["assets/bower_components/jquery/dist/jquery.min.js",
+         "assets/bower_components/bootstrap/dist/js/bootstrap.min.js",
+		 "assets/plugins/iCheck/icheck.min.js",
+		 "assets/jquery.ajaxfileupload.js"
+		]
+}

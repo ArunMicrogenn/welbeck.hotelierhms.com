@@ -1,0 +1,6 @@
+{
+  "js":["assets/bower_components/jquery/dist/jquery.min.js",         
+		 "assets/js/myjs.js",
+		 "assets/js/sweetalert.min.js"
+		]
+}
