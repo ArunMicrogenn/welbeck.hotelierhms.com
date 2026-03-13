@@ -32,12 +32,12 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 |	['char_set'] The character set used in communicating with the database
 |	['dbcollat'] The character collation used in communicating with the database
 |				 NOTE: For MySQL and MySQLi databases, this setting is only used
-| 				 as a backup if your server is running PHP < 5.2.3 or MySQL < 5.0.7
+|				 as a backup if your server is running PHP < 5.2.3 or MySQL < 5.0.7
 |				 (and in table creation queries made with DB Forge).
-| 				 There is an incompatibility in PHP with mysql_real_escape_string() which
-| 				 can make your site vulnerable to SQL injection if you are using a
-| 				 multi-byte character set and are running versions lower than these.
-| 				 Sites using Latin-1 or UTF-8 database character set and collation are unaffected.
+|				 There is an incompatibility in PHP with mysql_real_escape_string() which
+|				 can make your site vulnerable to SQL injection if you are using a
+|				 multi-byte character set and are running versions lower than these.
+|				 Sites using Latin-1 or UTF-8 database character set and collation are unaffected.
 |	['swap_pre'] A default table prefix that should be swapped with the dbprefix
 |	['encrypt']  Whether or not to use an encrypted connection.
 |
@@ -53,32 +53,47 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 |
 |	['compress'] Whether or not to use client compression (MySQL only)
 |	['stricton'] TRUE/FALSE - forces 'Strict Mode' connections
-|							- good for ensuring strict SQL while developing
+|					- good for ensuring strict SQL while developing
 |	['ssl_options']	Used to set various SSL options that can be used when making SSL connections.
 |	['failover'] array - A array with 0 or more data for connections if the main should fail.
 |	['save_queries'] TRUE/FALSE - Whether to "save" all executed queries.
-| 				NOTE: Disabling this will also effectively disable both
-| 				$this->db->last_query() and profiling of DB queries.
-| 				When you run a query, with this setting set to TRUE (default),
-| 				CodeIgniter will store the SQL statement for debugging purposes.
-| 				However, this may cause high memory usage, especially if you run
-| 				a lot of SQL queries ... disable this to avoid that problem.
+|				NOTE: Disabling this will also effectively disable both
+|				$this->db->last_query() and profiling of DB queries.
+|				When you run a query, with this setting set to TRUE (default),
+|				CodeIgniter will store the SQL statement for debugging purposes.
+|				However, this may cause high memory usage, especially if you run
+|				a lot of SQL queries ... disable this to avoid that problem.
 |
 | The $active_group variable lets you choose which connection group to
 | make active.  By default there is only one group (the 'default' group).
 |
 | The $query_builder variables lets you determine whether or not to load
 | the query builder class.
+|
+| -------------------------------------------------------------------
+| REQUIRED ENVIRONMENT VARIABLES
+| -------------------------------------------------------------------
+| The following environment variables must be set on the server:
+|
+|   DB_HOST     - SQL Server host (e.g. 164.52.195.176\SQLEXPRESS)
+|   DB_USER     - Database username (e.g. sa)
+|   DB_PASS     - Database password
+|   DB_NAME     - Default database name (e.g. welbeck)
+|   DB2_HOST    - mpower_beehives server host (can be same as DB_HOST)
+|   DB2_NAME    - Second database name (e.g. mpower_beehives)
+|   DB3_HOST    - Whatsapp server host (can be same as DB_HOST)
+|   DB3_NAME    - Third database name (e.g. Whatsapp)
+|
 */
 $active_group = 'default';
 $query_builder = TRUE;
 
 $db['default'] = array(
 	'dsn'	=> '',
-	'hostname' => 'DRIVER={SQL Server Native Client 11.0};Server=164.52.195.176\SQLEXPRESS;Database=welbeck;MARS_Connection=Yes;',
-	'username' => 'sa',
-	'password' => 'Mgenn@123',
-	'database' => 'welbeck',
+	'hostname' => 'DRIVER={SQL Server Native Client 11.0};Server=' . getenv('DB_HOST') . ';Database=' . getenv('DB_NAME') . ';MARS_Connection=Yes;',
+	'username' => getenv('DB_USER'),
+	'password' => getenv('DB_PASS'),
+	'database' => getenv('DB_NAME'),
 	'dbdriver' => 'odbc',
 	'dbprefix' => '',
 	'pconnect' => FALSE,
@@ -97,46 +112,46 @@ $db['default'] = array(
 
 
 $db['another_db'] = array(
-    'dsn'       => '',
-    'hostname'  => 'DRIVER={SQL Server Native Client 11.0};Server=164.52.195.176\SQLEXPRESS;Database=mpower_beehives;',
-    'username'  => 'sa',
-    'password'  => 'Mgenn@123',
-    'database'  => 'mpower_beehives',
-    'dbdriver'  => 'odbc',
-    'dbprefix'  => '',
-    'pconnect'  => FALSE,
-    'db_debug'  => FALSE,
-    'cache_on'  => FALSE,
-    'cachedir'  => '',
-    'char_set'  => 'utf8',
-    'dbcollat'  => 'utf8_general_ci',
-    'swap_pre'  => '',
-    'encrypt'   => FALSE,
-    'compress'  => FALSE,
-    'stricton'  => FALSE,
-    'failover'  => array(),
-    'save_queries' => TRUE
+	'dsn'       => '',
+	'hostname'  => 'DRIVER={SQL Server Native Client 11.0};Server=' . getenv('DB2_HOST') . ';Database=' . getenv('DB2_NAME') . ';',
+	'username'  => getenv('DB_USER'),
+	'password'  => getenv('DB_PASS'),
+	'database'  => getenv('DB2_NAME'),
+	'dbdriver'  => 'odbc',
+	'dbprefix'  => '',
+	'pconnect'  => FALSE,
+	'db_debug'  => FALSE,
+	'cache_on'  => FALSE,
+	'cachedir'  => '',
+	'char_set'  => 'utf8',
+	'dbcollat'  => 'utf8_general_ci',
+	'swap_pre'  => '',
+	'encrypt'   => FALSE,
+	'compress'  => FALSE,
+	'stricton'  => FALSE,
+	'failover'  => array(),
+	'save_queries' => TRUE
 );
 
 
 $db['whatsapp_db'] = array(
-    'dsn'       => '',
-    'hostname'  => 'DRIVER={SQL Server Native Client 11.0};Server=164.52.195.176\SQLEXPRESS;Database=Whatsapp;MARS_Connection=Yes;',
-    'username'  => 'sa',
-    'password'  => 'Mgenn@123',
-    'database'  => 'Whatsapp',
-    'dbdriver'  => 'odbc',
-    'dbprefix'  => '',
-    'pconnect'  => FALSE,
-    'db_debug'  => FALSE,
-    'cache_on'  => FALSE,
-    'cachedir'  => '',
-    'char_set'  => 'utf8',
-    'dbcollat'  => 'utf8_general_ci',
-    'swap_pre'  => '',
-    'encrypt'   => FALSE,
-    'compress'  => FALSE,
-    'stricton'  => FALSE,
-    'failover'  => array(),
-    'save_queries' => TRUE
+	'dsn'       => '',
+	'hostname'  => 'DRIVER={SQL Server Native Client 11.0};Server=' . getenv('DB3_HOST') . ';Database=' . getenv('DB3_NAME') . ';MARS_Connection=Yes;',
+	'username'  => getenv('DB_USER'),
+	'password'  => getenv('DB_PASS'),
+	'database'  => getenv('DB3_NAME'),
+	'dbdriver'  => 'odbc',
+	'dbprefix'  => '',
+	'pconnect'  => FALSE,
+	'db_debug'  => FALSE,
+	'cache_on'  => FALSE,
+	'cachedir'  => '',
+	'char_set'  => 'utf8',
+	'dbcollat'  => 'utf8_general_ci',
+	'swap_pre'  => '',
+	'encrypt'   => FALSE,
+	'compress'  => FALSE,
+	'stricton'  => FALSE,
+	'failover'  => array(),
+	'save_queries' => TRUE
 );
