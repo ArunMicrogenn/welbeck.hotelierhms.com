@@ -14,7 +14,8 @@ $this->pfrm->FrmHead6('Report / DayWise Settlement Report',$F_Class."/".$F_Ctrl,
 date_default_timezone_set('Asia/Kolkata');
 
 $openingBal = 0;
-$sql = "exec DayOpeningCash '".date('Y-m-d', strtotime('-1Day'))."'" ;
+$_openingDate = isset($_POST['frmdate']) ? date('Y-m-d', strtotime('-1 day', strtotime(preg_replace('/[^0-9\-]/', '', $_POST['frmdate'])))) : date('Y-m-d', strtotime('-1 day'));
+$sql = "exec DayOpeningCash '".$_openingDate."'" ;
 $res = $this->db->query($sql);
 foreach($res-> result_array() as $row){
     $openingBal= $row['clbal'];
@@ -45,11 +46,15 @@ foreach($res-> result_array() as $row){
     <?php
     if(@$_POST['submit'])
     {
+        // Sanitize date inputs — strip anything that is not a digit or hyphen
+        $_frmdate = date('Y-m-d', strtotime(preg_replace('/[^0-9\-]/', '', $_POST['frmdate'])));
+        $_todate  = date('Y-m-d', strtotime(preg_replace('/[^0-9\-]/', '', $_POST['todate'])));
+
         // Get date range
-        $startDate = new DateTime($_POST['frmdate']);
-        $endDate = new DateTime($_POST['todate']);
+        $startDate = new DateTime($_frmdate);
+        $endDate = new DateTime($_todate);
         $endDate->modify('+1 day'); // Include the end date
-        
+
         $dateInterval = new DateInterval('P1D');
         $datePeriod = new DatePeriod($startDate, $dateInterval, $endDate);
         
@@ -71,7 +76,7 @@ foreach($res-> result_array() as $row){
     ?>        
         <table class="table table-bordered table-hover table-responsive">    
         <div>
-            <h3 class="text-center">Day wise Report <?php echo date('d-m-Y', strtotime($_POST['frmdate'])); ?> To <?php echo date('d-m-Y', strtotime($_POST['todate'])); ?><h3>
+            <h3 class="text-center">Day wise Report <?php echo date('d-m-Y', strtotime($_frmdate)); ?> To <?php echo date('d-m-Y', strtotime($_todate)); ?><h3>
         </div>     
         
         <tbody>
@@ -419,7 +424,7 @@ foreach($res-> result_array() as $row){
                     elseif ($row['PayMod'] == 'NET TRANSFER') {
                         $grouped[$chk]['NEFT'] += $amt;
                     }
-                    elseif ($row['PayMod'] == 'TOROOM') {
+                    elseif ($row['PayMod'] == 'TO ROOM') {
                         $grouped[$chk]['TOROOM'] += $amt;
                     }
                     elseif ($row['PayMod'] == 'REFUND' || $amt < 0) {
@@ -469,6 +474,116 @@ foreach($res-> result_array() as $row){
                 echo '<tr><td colspan="16">&nbsp;</td></tr>';
             }
             
+            // 3B. GROUP CHECKOUT BILLS
+            $qry_grp = "select isnull(tpd.Paidamount,0) as Amt,(case when tpd.Paidamount< 0 then 'REFUND' else pm.paymode end) as PayMod, * from trans_checkout_mas tcm
+                    left outer join Trans_Pay_Det tpd on tcm.Checkoutid=tpd.Checkoutid
+                    inner join Mas_Customer cus on cus.Customer_Id=tcm.customerid
+                    Left outer join Mas_Title ti on ti.Titleid=cus.Titelid
+                    left outer join mas_paymode pm on pm.PayMode_Id=tpd.paymodeid
+                    inner join UserTable ut on ut.User_id=tcm.userid
+                    Where tcm.checkoutno like ('CHK%')
+                    and isnull(tpd.Paymodeid,0)<>18
+                    and isnull(tcm.groupcheckout,0) = 1
+                    and convert(date, tcm.Checkoutdate) = '".$currentDate."'
+                    and tcm.settle <>0
+                    and isnull(tcm.cancelflag,0)=0
+                    and isnull(tpd.Paymodeid,0)<> 4";
+
+            $exec_grp = $this->db->query($qry_grp);
+            $group_checkout = $exec_grp->num_rows();
+
+            if($group_checkout != 0) {
+                echo '<tr>';
+                echo '<td colspan="16" class="text-bold" style="text-align: center;background-color:#e8e8e8;">Group Checkout Bills</td>';
+                echo '</tr>';
+
+                echo '<tr style="background-color:#f5f5f5">';
+                echo '<td style="text-align: center;">S.No</td>';
+                echo '<td style="text-align: center;">Checkout No</td>';
+                echo '<td style="text-align: center;">Time</td>';
+                echo '<td style="text-align: center;">Guest Name</td>';
+                echo '<td style="text-align: center;">Total</td>';
+                echo '<td style="text-align: center;">Cash</td>';
+                echo '<td style="text-align: center;">Card</td>';
+                echo '<td style="text-align: center;">Net</td>';
+                echo '<td style="text-align: center;">To Room</td>';
+                echo '<td style="text-align: center;">UPI</td>';
+                echo '<td style="text-align: center;">Refund</td>';
+                echo '<td style="text-align: center;">User</td>';
+                echo '</tr>';
+
+                $i = 1;
+                $grouped = [];
+
+                foreach ($exec_grp->result_array() as $row) {
+                    $chk = $row['Checkoutno'];
+                    if (!isset($grouped[$chk])) {
+                        $grouped[$chk] = [
+                            'Checkoutno'   => $row['Checkoutno'],
+                            'yearPrefix'   => $row['yearPrefix'],
+                            'Checkouttime' => $row['Checkouttime'],
+                            'Title'        => $row['Title'],
+                            'Firstname'    => $row['Firstname'],
+                            'EmailId'      => $row['EmailId'],
+                            'Amt'          => 0,
+                            'CASH'         => 0,
+                            'CARD'         => 0,
+                            'UPI'          => 0,
+                            'NEFT'         => 0,
+                            'TOROOM'       => 0,
+                            'REFUND'       => 0,
+                        ];
+                    }
+                    $amt = (float)$row['Amt'];
+                    $grouped[$chk]['Amt'] += $amt;
+                    if ($row['PayMod'] == 'CASH')             { $grouped[$chk]['CASH']   += $amt; }
+                    elseif ($row['PayMod'] == 'CREDIT CARD')  { $grouped[$chk]['CARD']   += $amt; }
+                    elseif ($row['PayMod'] == 'UPI')          { $grouped[$chk]['UPI']    += $amt; }
+                    elseif ($row['PayMod'] == 'NET TRANSFER') { $grouped[$chk]['NEFT']   += $amt; }
+                    elseif ($row['PayMod'] == 'TO ROOM')      { $grouped[$chk]['TOROOM'] += $amt; }
+                    elseif ($row['PayMod'] == 'REFUND' || $amt < 0) { $grouped[$chk]['REFUND'] += abs($amt); }
+                }
+
+                foreach ($grouped as $row) {
+                    echo '<tr>';
+                    echo '<td align="center">'.$i++.'</td>';
+                    echo '<td align="center">'.$row['yearPrefix'].'/'.$row['Checkoutno'].'</td>';
+                    echo '<td align="center">'.substr($row['Checkouttime'],11,5).'</td>';
+                    echo '<td>'.$row['Title'].'.'.$row['Firstname'].'</td>';
+                    echo '<td align="right">'.number_format($row['Amt'],2).'</td>';
+                    echo '<td align="right">'.number_format($row['CASH'],2).'</td>';
+                    echo '<td align="right">'.number_format($row['CARD'],2).'</td>';
+                    echo '<td align="right">'.number_format($row['NEFT'],2).'</td>';
+                    echo '<td align="right">'.number_format($row['TOROOM'],2).'</td>';
+                    echo '<td align="right">'.number_format($row['UPI'],2).'</td>';
+                    echo '<td align="right">'.number_format($row['REFUND'],2).'</td>';
+                    echo '<td>'.$row['EmailId'].'</td>';
+                    echo '</tr>';
+
+                    $sectionTotals['group_checkout']['TOTAL']  += $row['Amt'];
+                    $sectionTotals['group_checkout']['CASH']   += $row['CASH'];
+                    $sectionTotals['group_checkout']['CARD']   += $row['CARD'];
+                    $sectionTotals['group_checkout']['NEFT']   += $row['NEFT'];
+                    $sectionTotals['group_checkout']['UPI']    += $row['UPI'];
+                    $sectionTotals['group_checkout']['TOROOM'] += $row['TOROOM'];
+                    $sectionTotals['group_checkout']['REFUND'] += $row['REFUND'];
+                }
+
+                echo '<tr style="background-color:#e8f4f8;font-weight:bold">';
+                echo '<td colspan="4" align="right">Group Checkout Subtotal</td>';
+                echo '<td align="right">'.number_format($sectionTotals['group_checkout']['TOTAL'],2).'</td>';
+                echo '<td align="right">'.number_format($sectionTotals['group_checkout']['CASH'],2).'</td>';
+                echo '<td align="right">'.number_format($sectionTotals['group_checkout']['CARD'],2).'</td>';
+                echo '<td align="right">'.number_format($sectionTotals['group_checkout']['NEFT'],2).'</td>';
+                echo '<td align="right">'.number_format($sectionTotals['group_checkout']['TOROOM'],2).'</td>';
+                echo '<td align="right">'.number_format($sectionTotals['group_checkout']['UPI'],2).'</td>';
+                echo '<td align="right">'.number_format($sectionTotals['group_checkout']['REFUND'],2).'</td>';
+                echo '<td></td>';
+                echo '</tr>';
+
+                echo '<tr><td colspan="16">&nbsp;</td></tr>';
+            }
+
             // 4. COMPANY CHECKOUT BILLS
             $qry7 = "select tpd.Amount as Amt,masc.Company as Com, * from trans_checkout_mas tcm
                     left outer join Trans_Pay_Det tpd on tcm.Checkoutid=tpd.Checkoutid  
@@ -518,7 +633,7 @@ foreach($res-> result_array() as $row){
                     
                     // Add to section totals (count as COMPANY)
                     $sectionTotals['company_checkout']['TOTAL'] += $Amt;
-                    // $sectionTotals['company_checkout']['COMPANY'] += $Amt;
+                    $grandTotals['COMPANY'] += $Amt;
                 }
                 
                 // Company Checkout Subtotal
@@ -682,7 +797,8 @@ foreach($res-> result_array() as $row){
         echo '<td align="right">'.number_format($dailyTotals['REFUND'],2).'</td>';
         // echo '<td align="right">'.number_format($dailyTotals['COMPANY'],2).'</td>';
         echo '<td></td>';
-            
+        echo '</tr>';
+
             // Add to grand totals
             foreach ($dailyTotals as $key => $value) {
                 $grandTotals[$key] += $value;
@@ -693,7 +809,7 @@ foreach($res-> result_array() as $row){
         
         // GRAND TOTALS FOR ENTIRE PERIOD
         echo '<tr style="background-color:#337ab7;color:white;font-weight:bold">';
-        echo '<td colspan="16">Grand Summary - Period: ' . date('d-m-Y', strtotime($_POST['frmdate'])) . ' to ' . date('d-m-Y', strtotime($_POST['todate'])) . '</td>';
+        echo '<td colspan="16">Grand Summary - Period: ' . date('d-m-Y', strtotime($_frmdate)) . ' to ' . date('d-m-Y', strtotime($_todate)) . '</td>';
         echo '</tr>';
         
         echo '<tr style="background-color:#f9f9f9;font-weight:bold">';
