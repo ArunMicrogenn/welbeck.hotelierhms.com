@@ -378,3 +378,4 @@ fix: config.php - remove duplicate PHP block causing parse error on line 545
 ```
 cd C:\inetpub\wwwroot\welbeckfodemo
 git pull origin main
+config['proxy_ips'] = '';
