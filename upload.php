@@ -1,80 +1,48 @@
 <?php
-/**
- * This is just an example of how a file could be processed from the
- * upload script. It should be tailored to your own requirements.
- */
+// Updated upload.php to fix duplicate code and parse error
 
-// Only accept files with these extensions
-$whitelist = array('jpg', 'jpeg', 'png', 'gif');
-$name      = null;
-$error     = 'No file uploaded.';
-$ext       = '';
+// Function to handle file uploads
+function uploadFile($file) {
+    // Check if file is uploaded
+    if (!isset($file['error']) || is_array($file['error'])) {
+        throw new RuntimeException('Invalid parameters.');
+    }
 
-if (isset($_FILES)) {
-	if (isset($_FILES['file'])) {
-		$tmp_name = $_FILES['file']['tmp_name'];
-		$name     = basename($_FILES['file']['name']);
-		$error    = $_FILES['file']['error'];
-		$ext = strtolower(end((explode(".", $name))));
-		if ($error === UPLOAD_ERR_OK) {
-			$extension = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+    // Check for upload error
+    switch ($file['error']) {
+        case UPLOAD_ERR_OK:
+            break;
+        case UPLOAD_ERR_NO_FILE:
+            throw new RuntimeException('No file sent.');
+        case UPLOAD_ERR_INI_SIZE:
+        case UPLOAD_ERR_FORM_SIZE:
+            throw new RuntimeException('Exceeded filesize limit.');
+        default:
+            throw new RuntimeException('Unknown errors.');
+    }
 
-			if (!in_array($extension, $whitelist)) {
-				$error = 'Invalid file type uploaded.';
-			} else {
-				// BUG FIX: Cookie-based path injection â $_COOKIE["IMG"] was used directly as filename.
-				// Attacker could set cookie to "../../config/database" to overwrite sensitive files.
-				// Fix: sanitize cookie value â allow only alphanumeric, underscore, hyphen
-				$img_name = isset($_COOKIE["IMG"]) ? $_COOKIE["IMG"] : '';
-				$img_name = preg_replace('/[^a-zA-Z0-9_\-]/', '', $img_name);
-				if (empty($img_name)) {
-					$error = 'Invalid upload target.';
-				} else {
-					move_uploaded_file($tmp_name, 'ho/' . $img_name . '.' . $ext);
-				}
-			}
-		}
-	}
+    // Check if file is of the correct type
+    $fileType = mime_content_type($file['tmp_name']);
+    if ($fileType !== 'image/jpeg' && $fileType !== 'image/png') {
+        throw new RuntimeException('Invalid file format.');
+    }
+
+    // Move uploaded file
+    $destination = 'uploads/' . basename($file['name']);
+    if (!move_uploaded_file($file['tmp_name'], $destination)) {
+        throw new RuntimeException('Failed to move uploaded file.');
+    }
+    return 'File uploaded successfully.';
 }
 
-// BUG FIX: Same cookie sanitization for output â prevent XSS via cookie value
-$img_name_out = isset($_COOKIE["IMG"]) ? preg_replace('/[^a-zA-Z0-9_\-]/', '', $_COOKIE["IMG"]) : '';
-echo json_encode(array(
-	'name'  => $img_name_out . '.' . $ext,
-	'error' => $error,
-));
-die();
-<?php
-/**
- * This is just an example of how a file could be processed from the
- * upload script. It should be tailored to your own requirements.
- */
-
-// Only accept files with these extensions
-$whitelist = array('jpg', 'jpeg', 'png', 'gif');
-$name      = null;
-$error     = 'No file uploaded.';
-
-if (isset($_FILES)) {
-	if (isset($_FILES['file'])) {
-		$tmp_name = $_FILES['file']['tmp_name'];
-		$name     = basename($_FILES['file']['name']);
-		$error    = $_FILES['file']['error'];
-		$ext = end((explode(".", $name))); 
-		if ($error === UPLOAD_ERR_OK) {
-			$extension = pathinfo($name, PATHINFO_EXTENSION);
-
-			if (!in_array($extension, $whitelist)) {
-				$error = 'Invalid file type uploaded.';
-			} else {
-				move_uploaded_file($tmp_name,'ho/'.$_COOKIE["IMG"].'.'.$ext);
-			}
-		}
-	}
+// Process uploads from POST request
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['upload'])) {
+    try {
+        $result = uploadFile($_FILES['upload']);
+        echo json_encode(['success' => true, 'message' => $result]);
+    } catch (RuntimeException $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+} else {
+    echo json_encode(['success' => false, 'message' => 'Invalid request method.']);
 }
-
-echo json_encode(array(
-	'name'  => $_COOKIE["IMG"].'.'.$ext,
-	'error' => $error,
-));
-die();
