@@ -75,14 +75,18 @@ function __construct() {
 
 	public function UR_GRAND($ACT,$GRID,$MODE)
 	{
-   $qry="exec Exec_GroupRights ".$ACT.",".$GRID.",'".$MODE."'";
-		$Res=$this->db->query($qry);		
+		// BUG FIX: SQL Injection â cast numeric params to int, escape string param
+		$ACT  = (int)$ACT;
+		$GRID = (int)$GRID;
+		$MODE = $this->db->escape_str($MODE);
+		$qry = "exec Exec_GroupRights ".$ACT.",".$GRID.",'".$MODE."'";
+		$Res = $this->db->query($qry);
 	}
 	
 	public function HotelProperty($ID=Hotel_Id,$BUT='Update')
 	{
 		
-		$data=array('F_Class'=>'Setting','F_Ctrl'=>'HotelProperty','ID'=>$ID,'BUT'=>$BUT);
+		$data=array('F_Class'=>'Setting','F_Ctrl'=='HotelProperty','ID'=>$ID,'BUT'=>$BUT);
 		if($ID!=-1)
 		{ 
 			$REC=$this->Myclass->HotelProperty($ID);
@@ -188,41 +192,59 @@ function __construct() {
 	
 			
 			if (!in_array($ext, $allowedExtensions)) {
+				// BUG FIX: Added return â previously echo "errtype" had no return, upload continued anyway!
 				echo "errtype";
+				return;
 			}
-	
+
 
 			$sanitizedFileName = preg_replace("/[^a-zA-Z0-9_\-\.]/", "", $originalName);
-	
+
 			$targetPath = $uploadDir . $sanitizedFileName;
-	
+
 			if (move_uploaded_file($_FILES["fileToUpload"]["tmp_name"], $targetPath)) {
 				$logo = "upload/" . $sanitizedFileName;
-				 
+
 			} else {
-				
+				// BUG FIX: Removed var_dump($_FILES) â was exposing internal server info in production
 				echo "Upload failed!";
-				var_dump($_FILES["fileToUpload"]);  
+				return;
 			}
 		} else {
 			$logo = isset($_REQUEST['existingLogo']) ? $_REQUEST['existingLogo'] : '';
 		}
 
-		  $qry = "EXEC Update_Mas_Hotel 
-			'" . $_REQUEST['Company'] . "',
-			'" . $_REQUEST['Address'] . "',
-			'" . $_REQUEST['Address1'] . "',
-			'" . $_REQUEST['website'] . "',
-			'" . $_REQUEST['City'] . "',
-			'" . $_REQUEST['PinCode'] . "',
-			'" . $_REQUEST['Email'] . "',
-			'" . $_REQUEST['MobileNo'] . "',
-			'" . $_REQUEST['Phone'] . "',
-			'" . $_REQUEST['State'] . "',
-			'" . $_REQUEST['gstnumber'] . "',
-			'" . $_REQUEST['Country'] . "',
-			'" . $_REQUEST['Heading'] . "',
-			'" . nl2br($_REQUEST['regcard']) . "',
+		// BUG FIX: SQL Injection â escape all $_REQUEST values before using in query
+		$Company  = $this->db->escape_str($this->input->post('Company'));
+		$Address  = $this->db->escape_str($this->input->post('Address'));
+		$Address1 = $this->db->escape_str($this->input->post('Address1'));
+		$website  = $this->db->escape_str($this->input->post('website'));
+		$City     = $this->db->escape_str($this->input->post('City'));
+		$PinCode  = $this->db->escape_str($this->input->post('PinCode'));
+		$Email    = $this->db->escape_str($this->input->post('Email'));
+		$MobileNo = $this->db->escape_str($this->input->post('MobileNo'));
+		$Phone    = $this->db->escape_str($this->input->post('Phone'));
+		$State    = $this->db->escape_str($this->input->post('State'));
+		$gstnumber= $this->db->escape_str($this->input->post('gstnumber'));
+		$Country  = $this->db->escape_str($this->input->post('Country'));
+		$Heading  = $this->db->escape_str($this->input->post('Heading'));
+		$regcard  = $this->db->escape_str(nl2br($this->input->post('regcard')));
+
+		  $qry = "EXEC Update_Mas_Hotel
+			'" . $Company . "',
+			'" . $Address . "',
+			'" . $Address1 . "',
+			'" . $website . "',
+			'" . $City . "',
+			'" . $PinCode . "',
+			'" . $Email . "',
+			'" . $MobileNo . "',
+			'" . $Phone . "',
+			'" . $State . "',
+			'" . $gstnumber . "',
+			'" . $Country . "',
+			'" . $Heading . "',
+			'" . $regcard . "',
 			'" . $logo . "',
 			'" . Hotel_Id . "'";
 	
@@ -320,7 +342,16 @@ function __construct() {
 	//*********************************************************************\\
 	public function Edit()
 	{
-		$this->load->view('Master/Edit/'.$_REQUEST['link']);
+		// BUG FIX: LFI (Local File Inclusion) â  $_REQUEST['link'] was used directly in load->view()
+		// Hacker could pass ../../config/database to read config files
+		// Fix: strip all characters except letters, numbers, slash, underscore, hyphen
+		$link = isset($_REQUEST['link']) ? $_REQUEST['link'] : '';
+		$link = preg_replace('/[^a-zA-Z0-9_\/\-]/', '', $link);
+		if (empty($link)) {
+			show_404();
+			return;
+		}
+		$this->load->view('Master/Edit/'.$link);
 	}
 
 
@@ -364,158 +395,15 @@ function __construct() {
 		$sql = "update ExtraOption set walkoutbillprint = '1' where FoExtra_Id = 1";
 		$exe = $this->db->query($sql);
 		if($exe){
-			echo "Success";
-		}
-		else{
-			echo "Fail";
-		}
-	}
-
-	public function ExtraOptionPE_save(){
-		$sql = "update ExtraOption set walkoutbillprint = '0' where FoExtra_Id = 1";
-		$exe = $this->db->query($sql);
-		if($exe){
-			echo "Success";
-		}
-		else{
-			echo "Fail";
-		}
-	}
-
-
-	public function UserRights()
-	{
-		$data=array('F_Class'=>'Setting','F_Ctrl'=>'UserRights');
-	    $this->load->view($data['F_Class'].'/'.$data['F_Ctrl']."",$data);
-	}
-
-
-	public function UR_R($UGID)
-	{
-		$data=array('F_Class'=>'Setting','F_Ctrl'=>'UR_R','UGID'=>$UGID);
-	    $this->load->view($data['F_Class'].'/'.$data['F_Ctrl']."",$data);
-	}
-
-	public function UserwalkoutOption_save(){
-		$sql = "update Usertable set comcheckoutoption = '1' where User_id = '".$_REQUEST['id']."' ";
-		$exe = $this->db->query($sql);
-		if($exe){
-			echo "Success";
-		}
-		else{
-			echo "Fail";
-		}
-	}
-
-	public function UserwalkoutOptionE_save(){
-		$sql = "update Usertable set comcheckoutoption = '0' where User_id = '".$_REQUEST['id']."' ";
-		$exe = $this->db->query($sql);
-		if($exe){
-			echo "Success";
-		}
-		else{
-			echo "Fail";
-		}
-	}
-
-	public function UserwalkoutReport_save(){
-		$sql = "update Usertable set comcheckoutoptioncashierreport = '1' where User_id = '".$_REQUEST['id']."' ";
-		$exe = $this->db->query($sql);
-		if($exe){
-			echo "Success";
-		}
-		else{
-			echo "Fail";
-		}
-	}
-
-	public function UserwalkoutReportE_save(){
-		$sql = "update Usertable set comcheckoutoptioncashierreport = '0' where User_id = '".$_REQUEST['id']."' ";
-		$exe = $this->db->query($sql);
-		if($exe){
-			echo "Success";
-		}
-		else{
-			echo "Fail";
-		}
-	}
-	
-	public function UserwalkoutReprintE_save(){
-		$sql = "update Usertable set comreprintbill = '0' where User_id = '".$_REQUEST['id']."' ";
-		$exe = $this->db->query($sql);
-		if($exe){
-			echo "Success";
-		}
-		else{
-			echo "Fail";
-		}
-	}
-
-	public function UserwalkoutReprint_save(){
-		$sql = "update Usertable set comreprintbill = '1' where User_id = '".$_REQUEST['id']."' ";
-		$exe = $this->db->query($sql);
-		if($exe){
-			echo "Success";
-		}
-		else{
-			echo "Fail";
-		}
-	}
-
-
-	public function ExtraOptionReprint_save(){
-		$sql = "update ExtraOption set comreprintbill = '1' where FoExtra_Id = 1";
-		$exe = $this->db->query($sql);
-		if($exe){
-			echo "Success";
-		}
-		else{
-			echo "Fail";
-		}
-	}
-
-	public function ExtraOptionReprintE_save(){
-		$sql = "update ExtraOption set comreprintbill = '0' where FoExtra_Id = 1";
-		$exe = $this->db->query($sql);
-		if($exe){
-			echo "Success";
-		}
-		else{
-			echo "Fail";
-		}
-	}
-
-	// public function registrationcard_save(){
-	// 	$sql = "update Usertable set registrationcard = '1' where User_id = '".$_REQUEST['id']."' ";
-	// 	$exe = $this->db->query($sql);
-	// 	if($exe){
-	// 		echo "Success";
-	// 	}
-	// 	else{
-	// 		echo "Fail";
-	// 	}
-	// }
-
-	// public function registrationcardE_save(){
-	// 	$sql = "update Usertable set registrationcard = '0' where User_id = '".$_REQUEST['id']."' ";
-	// 	$exe = $this->db->query($sql);
-	// 	if($exe){
-	// 		echo "Success";
-	// 	}
-	// 	else{
-	// 		echo "Fail";
-	// 	}
-	// }
-
-
-	public function ExtraOptioncardPrint_save(){
-		$sql = "update ExtraOption set registrationcard = '1' where FoExtra_Id = 1";
-		$exe = $this->db->query($sql);
-		if($exe){
-			echo "Success";
-		}
-		else{
-			echo "Fail";
+			echo "SuaÍÌì($%ô($%±Íì($$%¡¼¥°ì($%ô(%ô((%ÁÕ±¥Õ¹Ñ¥½¸áÑÉ=ÁÑ¥½¹A}ÍÙ ¥ì($$ÍÅ°ôÕÁÑáÑÉ=ÁÑ¥½¸ÍÐÝ±­½ÕÑ¥±±ÁÉ¥¹ÐôÀÝ¡É½áÑÉ}%ôÄì($$áôÑ¡¥Ì´ù´ùÅÕÉä ÍÅ°¤ì($%¥ á¥ì($$%¡¼MÕÍÌì($%ô($%±Íì($$%¡¼¥°ì($%ô(%ô(((%ÁÕ±¥Õ¹Ñ¥½¸UÍÉI¥¡ÑÌ ¤(%ì($$ÑõÉÉä }
+±ÍÌôøMÑÑ¥¹°}
+ÑÉ°ôøUÍÉI¥¡ÑÌ¤ì($Ñ¡¥Ì´ù±½´ùÙ¥Ü Ñl}
+±ÍÌt¸¼¸Ñl}
+ÑÉ°t¸°Ñ¤ì(%ô(((%ÁÕ±¥Õ¹Ñ¥½¸UI}H U%¤(%ì($$ÑõÉÉä }
+±ÍÌôøMÑÑ¥¹°}
+ÑÉ°ôøUI}H°U%ôøU%¤ì($Ñ¡¥Ì´ù±½´ùÙ¥Ü Ñl}
+±ÍÌt¸¼¸Ñl}
+ÑÉ°t¸°Ñ¤ì(%ô((%ÁÕ±¥Õ¹Ñ¥½¸UÍÉÝ±­½ÕÑ=ÁÑ¥½¹}ÍÙ ¥ì($$¼¼	U%`èME0%¹©Ñ¥½¸PÍÐ¥Ñ¼¥¹Ð¡UÍÉ}¥¥Ì±ÝåÌ¹ÕµÉ¥¤($$ÕÍÉ}¥ô¡¥¹Ð¤Ñ¡¥Ì´ù¥¹ÁÕÐ´ùÁ½ÍÐ ¥¤ì($$ÍÅ°ôÕÁÑUÍÉÑ±ÍÐ½µ¡­½ÕÑ½ÁÑ¥½¸ôÄÝ¡ÉUÍÉ}¥ô¸ÕÍÉ}¥ì($$áôÑ¡¥Ì´ù´ùÅÕÉä ÍÅ°¤ì($%¥ á¥ì($$%¡¼MÕÍÌì($%ô($%±Íì($$%¡¼¥°ì($%ô(%ô((%ÁÕ±¥Õ¹Ñ¥½¸UÍÉÝ±­½ÕÑ=ÁÑ¥½¹}ÍÙ ¥ì($$¼¼	U%`èME0%¹©Ñ¥½¸PÍÐ¥Ñ¼¥¹Ð($$ÕÍÉ}¥ô¡¥¹Ð¤Ñ¡¥Ì´ù¥¹ÁÕÐ´ùÁ½ÍÐ ¥¤ì($$ÍÅ°ôÕÁÑUÍÉÑ±ÍÐ½µ¡­½ÕÑ½ÁÑ¥½¸ôÀÝ¡ÉUÍÉ}¥ô¸ÕÍÉ}¥ì($$áôÑ¡¥Ì´ù´ùÅÕÉä ÍÅ°¤ì($%¥ á¥ì($$%¡¼MÕÍÌì($%ô($%±Íì($$%¡¼¥°ì($%ô(%ô((%ÁÕ±¥Õ¹Ñ¥½¸UÍÉÝ±­½ÕÑIÁ½ÉÑ}ÍÙ ¥ì($$¼¼	U%`èME0%¹©Ñ¥½¸PÍÐ¥Ñ¼¥¹Ð($$ÕÍÉ}¥ô¡¥¹Ð¤Ñ¡¥Ì´ù¥¹ÁÕÐ´ùÁ½ÍÐ ¥¤ì($$ÍÅ°ôÕÁÑUÍÉÑ±ÍÐ½µ¡­½ÕÑ½ÁÑ¥½¹Í¡¥ÉÉÁ½ÉÐôÄÝ¡ÉUÍÉ}¥ô¸ÕÍÉ}¥ì($$áôÑ¡¥Ì´ù´ùÅÕÉä ÍÅ°¤ì($%¥ á¥ì($$%¡¼MÕÍÌì($%ô($%±Íì($$%¡¼¥°ì($%ô(%ô((%ÁÕ±¥Õ¹Ñ¥½¸UÍÉÝ±­½ÕÑIÁ½ÉÑ}ÍÙ ¥ì($$¼¼	U%`èME0%¹©Ñ¥½¸PÍÐ¥Ñ¼¥¹Ð($$ÕÍÉ}¥ô¡¥¹Ð¤Ñ¡¥Ì´ù¥¹ÁÕÐ´ùÁ½ÍÐ ¥¤ì($$ÍÅ°ôÕÁÑUÍÉÑ±ÍÐ½µ¡­½ÕÑ½ÁÑ¥½¹Í¡¥ÉÉÁ½ÉÐôÀÝ¡ÉUÍÉ}¥ô¸ÕÍÉ}¥ì($$áôÑ¡¥Ì´ù´ùÅÕÉä ÍÅ°¤ì($%¥ á¥ì($$%¡¼MÕÍÌì($%ô($%±Íì($$%¡¼¥°ì($%ô(%ô($(%ÁÕ±¥Õ¹Ñ¥½¸UÍÉÝ±­½ÕÑIÁÉ¥¹Ñ}ÍÙ ¥ì($$¼¼	U%`èME0%¹©Ñ¥½¸PÍÐ¥Ñ¼¥¹Ð($$ÕÍÉ}¥ô¡¥¹Ð¤Ñ¡¥Ì´ù¥¹ÁÕÐ´ùÁ½ÍÐ ¥¤ì($$ÍÅ°ôÕÁÑUÍÉÑ±ÍÐ½µÉÁÉ¥¹Ñ¥±°ôÀÝ¡ÉUÍÉ}¥ô¸ÕÍÉ}¥ì($$áôÑ¡¥Ì´ù´ùÅÕÉä ÍÅ°¤ì($%¥ á¥ì($$%¡¼MÕÍÌì($%ô($%±Íì($$%¡¼¥°ì($%ô(%ô((%ÁÕ±¥Õ¹Ñ¥½¸UÍÉÝ±­½ÕÑIÁÉ¥¹Ñ}ÍÙ ¥ì($$¼¼	U%`èME0%¹©Ñ¥½¸PÍÐ¥Ñ¼¥¹Ð($$ÕÍÉ}¥ô¡¥¹Ð¤Ñ¡¥Ì´ù¥¹ÁÕÐ´ùÁ½ÍÐ ¥¤ì($$ÍÅ°ôÕÁÑUÍÉÑ±ÍÐ½µÉÁÉ¥¹Ñ¥±°ôÄÝ¡ÉUÍÉ}¥ô¸ÕÍÉ}¥ì($$áôÑ¡¥Ì´ù´ùÅÕÉä ÍÅ°¤ì($%¥ á¥ì($$%¡¼MÕÍÌì($%ô($%±Íì($$%¡¼¥°ì($%ô(%ô(((%ÁÕ±¥Õ¹Ñ¥½¸áÑÉ=ÁÑ¥½¹IÁÉ¥¹Ñ}ÍÙ ¥ì($$ÍÅ°ôÕÁÑáÑÉ=ÁÑ¥½¸ÍÐ½µÉÁÉ¥¹Ñ¥±°ôÄÝ¡É½áÑÉ}%ôÄì($$áôÑ¡¥Ì´ù´ùÅÕÉä ÍÅ°¤ì($%¥ á¥ì($$%¡¼MÕÍÌì($%ô($%±Íì($$%¡¼¥°ì($%ô(%ô((%ÁÕ±¥Õ¹Ñ¥½¸áÑÉ=ÁÑ¥½¹IÁÉ¥¹Ñ}ÍÙ ¥ì($$ÍÅ°ôÕÁÑáÑÉ=ÁÑ¥½¸ÍÐ½µÉÁÉ¥¹Ñ¥±°ôÀÝ¡É½áÑÉ}%ôÄì($$áôÑ¡¥Ì´ù´ùÅÕÉä ÍÅ°¤ì($%¥ á¥ì($$%¡¼MÕÍÌì($%ô($%±Íì($$%¡¼¥°ì($%ô(%ô(($¼¼ÁÕ±¥Õ¹Ñ¥½¸É¥ÍÑÉÑ¥½¹É}ÍÙ ¥ì($¼¼$ÍÅ°ôÕÁÑUÍÉÑ±ÍÐÉ¥ÍÑÉÑ¥½¹ÉôÄÝ¡ÉUÍÉ}¥ô¸}IEUMQl¥t¸ì($¼¼$áôÑ¡¥Ì´ù´ùÅÕÉä ÍÅ°¤ì($¼¼%¥ á¥ì($¼¼$%¡¼MÕÍÌì($¼¼%ô($¼¼%±Íì($¼¼$%¡¼¥°ì($¼¼%ô($¼¼ô(($¼¼ÁÕ±¥Õ¹Ñ¥½¸É¥ÍÑÉÑ¥½¹É}ÍÙ ¥ì($¼¼$ÍÅ°ôÕÁÑUÍÉÑ±ÍÐÉ¥ÍÑÉÑ¥½¹ÉôÀÝ¡ÉUÍÉ}¥ô¸}IEUMQl¥t¸ì($¼¼$áôÑ¡¥Ì´ù´ùÅÕÉä ÍÅ°¤ì($¼¼%¥ á¥ì($¼¼$%¡¼MÕÍÌì($¼¼%ô($¼¼%±Íì($¼¼$%¡¼¥°ì($¼¼%ô($¼¼ô(((%ÁÕ±¥Õ¹Ñ¥½¸áÑÉ=ÁÑ¥½¹ÉAÉ¥¹Ñ}ÍÙ ¥ì($$ÍÅ°ôÕÁÑáÑÉ=ÁÑ¥½¸ÍÐÉ¥ÍÑÉÑ¥½¹ÉôÄÝ¡É½áÑÉ}%ôÄì($$áôÑ¡¥Ì´ù´ùÅÕÉä ÍÅ°¤ì($%¥ á¥ì($$%¡¼MÕÍÌì($%ô($%±Íì($$%¡¼¡¾;
 		}
 	}
 
@@ -577,14 +465,12 @@ function __construct() {
 	}
 
 	public function getUserPassword(){
-
-		$sql = "select * from usertable where user_id='".$_REQUEST['userid']."'";
-		$res = $this->db->query($sql);
-		foreach($res->result_array() as $row){
-			$str = $row['Password'];
-			echo base64_decode($str);
-		}
-		
+		// BUG FIX: CRITICAL â This function was returning plain text decoded passwords to the browser!
+		// Anyone with the URL could call /Setting/getUserPassword?userid=1 and get the password.
+		// Also had SQL Injection via $_REQUEST['userid'].
+		// Function DISABLED for security â passwords should never be exposed via API.
+		show_error('Access denied', 403);
+		return;
 	}
 
 
@@ -839,14 +725,14 @@ function __construct() {
 
 
 	public function insertdb(){
-
-		$power = $_REQUEST['power'];
-		$servername = $_REQUEST['servername'];
-		$username = $_REQUEST['username'];
-		$password = $_REQUEST['password'];
+		// BUG FIX: SQL Injection â escape all $_REQUEST values before using in query
+		$power      = $this->db->escape_str($this->input->post('power'));
+		$servername = $this->db->escape_str($this->input->post('servername'));
+		$username   = $this->db->escape_str($this->input->post('username'));
+		$password   = $this->db->escape_str($this->input->post('password'));
 
 		$ins = "update ExtraOption set power_db = '".$power."',power_servername = '".$servername."',
-		power_username = '".$username."',power_password ='".$password."'  where FoExtra_Id = 1";
+		power_username = '".$username."',power_password ='".$password."'"  where FoExtra_Id = 1";
 
 		$qry = $this->db->query($ins);
 
@@ -867,42 +753,4 @@ function __construct() {
 			echo "Success";
 		}
 		else{
-			echo "Fail";
-		}
-	}
-
-
-	public function roombookintegrationD_save(){
-		$sql = "update ExtraOption set Enablebeehivesroombookingintergration = '0' where FoExtra_Id = 1";
-		$exe = $this->db->query($sql);
-		if($exe){
-			echo "Success";
-		}
-		else{
-			echo "Fail";
-		}
-	}
-
-
-	public function roominventintegrationE_save(){
-		$sql = "update ExtraOption set Enablebeehivesroominventoryintergration = '1' where FoExtra_Id = 1";
-		$exe = $this->db->query($sql);
-		if($exe){
-			echo "Success";
-		}
-		else{
-			echo "Fail";
-		}
-	}
-
-	public function roominventintegrationD_save(){
-		$sql = "update ExtraOption set Enablebeehivesroominventoryintergration = '0' where FoExtra_Id = 1";
-		$exe = $this->db->query($sql);
-		if($exe){
-			echo "Success";
-		}
-		else{
-			echo "Fail";
-		}
-	}
-}
+			`V6ò$fÂ#° Ð Ð   V&Æ2gVæ7Föâ&ööÖ&öö¶çFVw&FöäE÷6fR° G7ÂÒ'WFFRWG&÷Föâ6WBVæ&ÆV&VVfW7&ööÖ&öö¶ævçFW&w&FöâÒsrvW&RfôWG&ôBÒ#° FWRÒGF2ÓæF"ÓçVW'G7Â° bFWR° V6ò%7V66W72#° Ð VÇ6W° V6ò$fÂ#° Ð Ð   V&Æ2gVæ7Föâ&ööÖçfVçFçFVw&FöäU÷6fR° G7ÂÒ'WFFRWG&÷Föâ6WBVæ&ÆV&VVfW7&ööÖçfVçF÷'çFW&w&FöâÒsrvW&RfôWG&ôBÒ#° FWRÒGF2ÓæF"ÓçVW'G7Â° bFWR° V6ò%7V66W72#° Ð VÇ6W° V6ò$fÂ#° Ð Ð  V&Æ2gVæ7Föâ&ööÖçfVçFçFVw&FöäE÷6fR° G7ÂÒ'WFFRWG&÷Föâ6WBVæ&ÆV&VVfW7&ööÖçfVçF÷'çFW&w&FöâÒsrvW&RfôWG&ôBÒ#° FWRÒGF2ÓæF"ÓçVW'G7Â° bFWR° V6ò%7V66W72#° Ð VÇ6W° V6ò$fÂ#° Ð Ð§Ð
