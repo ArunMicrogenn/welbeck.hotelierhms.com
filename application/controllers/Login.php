@@ -5,8 +5,8 @@ class Login extends CI_Controller {
 	function __construct()
 	{
 		parent::__construct();
-		$this->pcss->loginwjs();	
-		echo "Redirecting...";
+		$this->pcss->loginwjs();
+		// BUG FIX: Removed echo "Redirecting..." — was outputting content before CI could handle headers
 	}
 	public function index()
 	{ 
@@ -24,7 +24,10 @@ class Login extends CI_Controller {
 		{
 			$Ready=false;
 		}
-	   $qry=" EXEC dbo.Login '".$_POST['username']."' ,'".base64_encode($_POST['password'])."'";
+	   // BUG FIX: SQL Injection — never use $_POST directly in SQL. Use escape_str() to sanitize input.
+	   $username = $this->db->escape_str($this->input->post('username'));
+	   $password  = base64_encode($this->input->post('password'));
+	   $qry=" EXEC dbo.Login '".$username."' ,'".$password."'";
 	   $res=$this->db->query($qry);
 	   $data=json_encode($res->result());
 	 
@@ -66,9 +69,9 @@ class Login extends CI_Controller {
   
 	public function logout()
 	{
-		@session_start();
-	    @session_destroy();
-		//$this->load->view('welcome_message');
+		// BUG FIX: Use CI session library instead of raw PHP session functions
+		$this->load->library('session');
+		$this->session->sess_destroy();
 		?>
 		<script>
 		window.location.href="<?php echo scs_index; ?>";
