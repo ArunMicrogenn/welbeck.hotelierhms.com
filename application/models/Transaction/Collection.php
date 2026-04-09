@@ -32,7 +32,7 @@ class Collection extends CI_Model
 	function Collection_exec()
 	{
        $date= date('Y-m-d');
-       $ins="";$ins1="";$ins3=""; $ims4="";
+       $ins="";$ins1="";$ins3=""; $ins4="";
 		if($_REQUEST['BUT'] =='SAVE')
 		{   
 
@@ -60,7 +60,7 @@ class Collection extends CI_Model
                        '".$_REQUEST['Billno'][$i]."','".$_REQUEST['checkoutdate'][$i]."',
                        '".$_REQUEST['Billamount'][$i]."','".$bal."','".$_REQUEST['Amt'][$i]."')";
 
-            $ims4 = $ims4."update  trans_pay_det set paidamount='".$paid."' where 
+            $ins4 = $ins4."update  trans_pay_det set paidamount='".$paid."' where
             Checkoutid='".$_REQUEST['checkoutid'][$i]."'";
             }
               
@@ -72,7 +72,7 @@ class Collection extends CI_Model
             echo "set @Siden=@@identity; ";
             echo $ins1;				
             echo $ins3;
-            echo $ims4;
+            echo $ins4;
             echo " If @@error<>0 Rollback Tran else Commit Tran ";
             echo "COMMIT ";
             echo "end try ";
