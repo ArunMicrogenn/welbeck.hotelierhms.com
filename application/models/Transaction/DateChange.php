@@ -25,7 +25,7 @@ class DateChange extends CI_Model
 		$res=$this->db->query($update);
 		$update="delete Temp_Trans_Credit_Entry where CreditDate='".$auditdate."' ";
 		$res=$this->db->query($update);
-		$creditdate=date('Y-m-d',strtotime($auditdate.'+1 days'));
+		$creditdate=date('Y-m-d',strtotime('+1 day', strtotime($auditdate)));
 		$bool=true;
         $Res=$this->Myclass->Get_NightAuditrooms();
 		  foreach($Res as $row)
